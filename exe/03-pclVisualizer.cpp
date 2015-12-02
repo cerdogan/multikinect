@@ -1,4 +1,6 @@
- #include <pcl/io/openni_grabber.h>
+#include <thread>
+#include <vector>
+#include <pcl/io/openni_grabber.h>
 #include <pcl/visualization/cloud_viewer.h>
 
 int id;

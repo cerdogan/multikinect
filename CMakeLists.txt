@@ -4,6 +4,13 @@ project(openni_grabber)
 
 find_package(PCL 1.2 REQUIRED)
 
+# Include the OpenCV library
+set(OpenCV_DIR "/usr/local/share/OpenCV")
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIR})
+link_libraries(${OpenCV_LIBS})
+
+# Include the PCL library
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS} -std=c++0x -g)
