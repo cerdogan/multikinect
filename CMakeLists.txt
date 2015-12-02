@@ -8,10 +8,17 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS} -std=c++0x -g)
 
-add_executable (openni_grabber openni_grabber.cpp)
-target_link_libraries (openni_grabber ${PCL_LIBRARIES})
-add_executable (all4 all4.cpp)
-target_link_libraries (all4 ${PCL_LIBRARIES})
-add_executable (visualizer visualizer.cpp)
-target_link_libraries (visualizer ${PCL_LIBRARIES})
+# Collect the source, script and test files
+file(GLOB scripts_source "exe/*.cpp")
+LIST(SORT scripts_source)
 
+# Build scripts
+message(STATUS "\n-- SCRIPTS: ")
+foreach(script_src_file ${scripts_source})
+    get_filename_component(script_base ${script_src_file} NAME_WE)
+    message(STATUS "Adding script ${script_src_file} with base name ${script_base}" )
+    add_executable(${script_base} ${script_src_file})
+		target_link_libraries (${script_base} ${PCL_LIBRARIES})
+    add_custom_target(${script_base}.run ${script_base} ${ARGN})
+endforeach(script_src_file)
+message(STATUS " ")
