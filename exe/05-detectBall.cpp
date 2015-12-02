@@ -111,6 +111,7 @@ struct SimpleOpenNIViewer {
 		std::vector <Eigen::VectorXd> points;
 		while(!pixels.empty()) {
 
+
 			// Get the pixel value and its color
 			int val = pixels.front();
 			pixels.pop();
@@ -121,6 +122,7 @@ struct SimpleOpenNIViewer {
 			pcl::PointXYZRGBA pc = point_cloud_ptr->at(pxc, pyc);
 			double zc = pc.z;
 			numPixels++;
+			if(pc.x != pc.x || pc.y != pc.y || pc.z != pc.z) continue;
 
 			// Display the image
 			im.at<cv::Vec3b>(pyc, pxc) = cv::Vec3b(0,0,255);
@@ -155,6 +157,10 @@ struct SimpleOpenNIViewer {
 
 
 			}
+
+			if(numPixels > 1000) {
+				printf("Reached limit...\n"); fflush(stdout);break;
+			}
 		}
 		
 		cv::imshow("image", im);
@@ -181,24 +187,24 @@ struct SimpleOpenNIViewer {
 		Eigen::VectorXd x = ((A.transpose()*A).inverse())*(A.transpose()) * b;
 		center = -x.block<3,1>(0,0)/2;
 
-		// Visualize the center
-		int bestx = 0, besty = 0;
-		double minDist = 1e9;
-		for(size_t i = 0; i < points.size(); i++) {
-			double dist = (points[i].block<3,1>(0,0).normalized() - center.normalized()).squaredNorm();
-			if(dist < minDist) {
-				bestx = points[i](3);
-				besty = points[i](4);
-				minDist = dist;
-			}
-		}
-		
-		// printf("minDist: %lf, bestx: %d, besty: %d\n", minDist, bestx, besty);
-		im.at<cv::Vec3b>(besty, bestx) = cv::Vec3b(0,255,0);
-		im.at<cv::Vec3b>(besty+1, bestx-1) = cv::Vec3b(0,255,0);
-		im.at<cv::Vec3b>(besty+1, bestx+1) = cv::Vec3b(0,255,0);
-		im.at<cv::Vec3b>(besty-1, bestx-1) = cv::Vec3b(0,255,0);
-		im.at<cv::Vec3b>(besty-1, bestx+1) = cv::Vec3b(0,255,0);
+		//// Visualize the center
+		//int bestx = 0, besty = 0;
+		//double minDist = 1e9;
+		//for(size_t i = 0; i < points.size(); i++) {
+		//	double dist = (points[i].block<3,1>(0,0).normalized() - center.normalized()).squaredNorm();
+		//	if(dist < minDist) {
+		//		bestx = points[i](3);
+		//		besty = points[i](4);
+		//		minDist = dist;
+		//	}
+		//}
+		//
+		//printf("minDist: %lf, bestx: %d, besty: %d\n", minDist, bestx, besty);
+		//im.at<cv::Vec3b>(besty, bestx) = cv::Vec3b(0,255,0);
+		//im.at<cv::Vec3b>(besty+1, bestx-1) = cv::Vec3b(0,255,0);
+		//im.at<cv::Vec3b>(besty+1, bestx+1) = cv::Vec3b(0,255,0);
+		//im.at<cv::Vec3b>(besty-1, bestx-1) = cv::Vec3b(0,255,0);
+		//im.at<cv::Vec3b>(besty-1, bestx+1) = cv::Vec3b(0,255,0);
 	}
 
 	/* ------------------------------------------------------------------------------------------ */
@@ -244,13 +250,12 @@ struct SimpleOpenNIViewer {
 				}
 				// coords[2] = -1;
 				if((!(center(0) != center(0))) && center.norm() > 1e-2) {
-					cout << "center: " << center.transpose() << endl;
 					counter++;
 					sumCenter += center;
 				}
-				if(counter >= 25) {
+				if(counter >= 100) {
 					counter = 0;
-					cout << "mean center: " << (sumCenter/25).transpose() << endl;
+					cout << "mean center: " << (sumCenter/100).transpose() << endl;
 					sumCenter = Eigen::Vector3d(0,0,0);
 				}
 				// update = false;
