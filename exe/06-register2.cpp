@@ -100,7 +100,9 @@ int main () {
 	v4.init();
 
 	// Create the viewer
-	Viewer* viewer = new Viewer ("3D Viewer");
+	char buf [256];
+	sprintf(buf, "Kinect %d", id);
+	Viewer* viewer = new Viewer (buf);
   viewer->registerKeyboardCallback (keyboardEventOccurred, (void*)&viewer);
   viewer->setBackgroundColor (0, 0, 0);
   viewer->addCoordinateSystem (1.0);
