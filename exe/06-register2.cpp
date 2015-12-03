@@ -6,8 +6,8 @@
 
 typedef pcl::PointCloud<pcl::PointXYZRGBA> Cloud;
 typedef pcl::visualization::PCLVisualizer Viewer;
-pthread_mutex_t lock;
-std::vector <Cloud> cs;
+pthread_mutex_t lock, lock2;
+std::vector <Cloud::Ptr> cs;
 
 /* ******************************************************************************************** */
 struct SimpleOpenNIViewer {
@@ -15,11 +15,8 @@ struct SimpleOpenNIViewer {
 	SimpleOpenNIViewer (int i_) : id(i_) { }
 
 	void cloud_cb_ (const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloud) {
-		Cloud c2;
-		c2 += *cloud;
-		std::vector<int> indices;
     pthread_mutex_lock(&lock);
-		cs[id-1] = c2;
+		cs[id-1] = cloud->makeShared();
     pthread_mutex_unlock(&lock);
 	}
 
@@ -64,55 +61,119 @@ Eigen::Matrix4d generateFrame (const std::string& filename) {
 }
 
 /* ******************************************************************************************** */
+Eigen::Matrix4d T2 = Eigen::Matrix4d::Identity();
+unsigned int text_id = 0;
+void keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event,
+                            void* viewer_void) {
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = 
+		*static_cast<boost::shared_ptr<pcl::visualization::PCLVisualizer> *> (viewer_void);
+	double dd = 0.005;
+  if (event.getKeySym () == "a" && event.keyDown ()) T2(0,3) += dd;
+  if (event.getKeySym () == "d" && event.keyDown ()) T2(0,3) -= dd;
+  if (event.getKeySym () == "w" && event.keyDown ()) T2(1,3) += dd;
+  if (event.getKeySym () == "s" && event.keyDown ()) T2(1,3) -= dd;
+  if (event.getKeySym () == "j" && event.keyDown ()) { 
+		printf("\nasdf\nasdf\nasdf\n"); 
+		T2(2,3) += dd;
+	}
+  if (event.getKeySym () == "l" && event.keyDown ()) T2(2,3) -= dd;
+}
+
+/* ******************************************************************************************** */
+Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
 int main () {
 	
 	// Compute the transformation
-	Eigen::Matrix4d T1 = generateFrame ("../data/tennis1");
-	Eigen::Matrix4d T2 = generateFrame ("../data/tennis2");
-	exit(0);
-	Eigen::Matrix4d T = T2.inverse() * T1; //Eigen::Matrix4d::Identity();
-//	T(2,3) = 1;
+	T.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI_2, Eigen::Vector3d(0,1,0)).matrix();
+	T2.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI_2, Eigen::Vector3d(0,1,0)).matrix();
+	T2(0,3) = -0.94;
+	T2(1,3) = 0.05;
+	T2(2,3) = 1.07;
 
-	for(int i = 0; i < 4; i++) cs.push_back(Cloud());
+	for(int i = 0; i < 4; i++) cs.push_back(Cloud::Ptr(new Cloud));
 	pthread_mutex_init(&lock, NULL);
-	SimpleOpenNIViewer v1(1), v2(2);
+	pthread_mutex_init(&lock2, NULL);
+	SimpleOpenNIViewer v1(1), v2(2), v3(3), v4(4);
 	v1.init();
 	v2.init();
+	v3.init();
+	v4.init();
 
 	// Create the viewer
 	Viewer* viewer = new Viewer ("3D Viewer");
+  viewer->registerKeyboardCallback (keyboardEventOccurred, (void*)&viewer);
   viewer->setBackgroundColor (0, 0, 0);
   viewer->addCoordinateSystem (1.0);
   viewer->initCameraParameters ();
 	viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE,3,"sample");
 
 	// Visualize
+	int counter = 0;
 	while(true) {
+    pthread_mutex_lock(&lock2);
+		T = T2;
+		if(counter++ % 4 == 0) cout << "====== " << counter << " ==============================================\nT: " << T << endl;
+    pthread_mutex_unlock(&lock2);
     pthread_mutex_lock(&lock);
-		Cloud c, c2;
-		c = cs[0];
+		Cloud::Ptr c (new Cloud);
+		Cloud::Ptr c1, c2,c3,c4;
+		c1 = cs[0];
 		c2 = cs[1];
+		c3 = cs[2];
+		c4 = cs[3];
 		
-		// Transform the second cloud
-		if(c2.isOrganized() && c2.size() > 0) {
-			for (int h=0; h<c2.height; h++) {
-				for (int w=0; w<c2.width; w++) {
-					pcl::PointXYZRGBA point = c2.at(w, h);
-					Eigen::Vector4d p (point.x, point.y, point.z, 1);
-					Eigen::Vector4d Tp = T * p;
-					point.x = p(0); point.y = p(1); point.z = p(2);
-					c2.at(w,h) = point;
-				}
+		for (int h=0; h < c1->height; h++) {
+			for (int w=0; w < c1->width; w++) {
+				pcl::PointXYZRGBA point = c1->at(w, h);
+				if(point.x != point.x) continue;
+				if(point.z > 1.5) continue;
+				c->push_back(point);
 			}
 		}
 
-		c += c2;
+	for (int h=0; h < c3->height; h++) {
+			for (int w=0; w < c3->width; w++) {
+				pcl::PointXYZRGBA point = c3->at(w, h);
+				if(point.x != point.x) continue;
+				if(point.z > 1.5) continue;
+				c->push_back(point);
+			}
+		}
+	for (int h=0; h < c4->height; h++) {
+			for (int w=0; w < c4->width; w++) {
+				pcl::PointXYZRGBA point = c4->at(w, h);
+				if(point.x != point.x) continue;
+				if(point.z > 1.5) continue;
+				c->push_back(point);
+			}
+		}
+
+
+
+		// Transform the second cloud
+		for (int h=0; h < c2->height; h++) {
+			for (int w=0; w < c2->width; w++) {
+		//for (int h=50; h < 60; h++) {
+		//	for (int w=50; w < 60; w++) {
+				pcl::PointXYZRGBA point = c2->at(w, h);
+				//printf("orig point: (%lf, %lf, %lf)\n", point.x, point.y, point.z);
+				if(point.x != point.x) continue;
+				if(point.z > 1.5) continue;
+				Eigen::Vector4d p (point.x, point.y, point.z, 1);
+				Eigen::Vector4d Tp = T * p;
+				point.x = Tp(0); point.y = Tp(1); point.z = Tp(2);
+				// c2.at(w,h) = point;
+				c->push_back(point);
+				//printf("adding point: (%lf, %lf, %lf)\n", point.x, point.y, point.z);
+			}
+		}
+
+//		c += c2;
     pthread_mutex_unlock(&lock);
 
 		viewer->removePointCloud();
-		Cloud::Ptr cp = c.makeShared();
-		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBA> rgb(cp);
-		viewer->addPointCloud(cp, rgb);
+		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBA> rgb(c);
+		viewer->addPointCloud(c, rgb);
 		viewer->spinOnce();
 	//	printf("%d\n", c.size());
 	}
