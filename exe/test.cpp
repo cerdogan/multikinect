@@ -1,137 +1,174 @@
-// OpenNI includes
-#include <XnUSB.h>
+/* \author Geoffrey Biggs */
 
-// Standard includes
-#include <stdio.h>
-#include <time.h>
 
-/**
- * Class to control Kinect's motor.
- */
-class KinectMotor
-{
-public:
-        KinectMotor();
-        virtual ~KinectMotor();
+#include <iostream>
 
-        /**
-         * Open device.
-         * @return true if succeeded, false - overwise
-         */
-        bool Open();
+#include <boost/thread/thread.hpp>
+#include <pcl/common/common_headers.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/console/parse.h>
+#include <pcl/filters/filter.h>
 
-        /**
-         * Close device.
-         */
-        void Close();
+typedef pcl::PointCloud<pcl::PointXYZRGBA> Cloud;
 
-        /**
-         * Move motor up or down to specified angle value.
-         * @param angle angle value
-         * @return true if succeeded, false - overwise
-         */
-        bool Move(int angle);
-
-private:
-        XN_USB_DEV_HANDLE m_dev;
-        bool m_isOpen;
-};
-
-KinectMotor::KinectMotor()
-{
-        m_isOpen = false;
+/* ******************************************************************************************** */
+Eigen::Matrix4d T1 = Eigen::Matrix4d::Identity();
+Eigen::Matrix4d T2 = Eigen::Matrix4d::Identity();
+Eigen::Matrix4d T3 = Eigen::Matrix4d::Identity();
+Eigen::Matrix4d T4 = Eigen::Matrix4d::Identity();
+Eigen::Matrix4d* Tc = &T2;
+bool viewAll = false;
+void keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event,
+                            void* viewer_void) {
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = 
+		*static_cast<boost::shared_ptr<pcl::visualization::PCLVisualizer> *> (viewer_void);
+	static double dd = 0.005;
+  if (event.getKeySym () == "q" && event.keyDown ()) {
+		dd *= 2;
+		printf("doubled dd to %lf\n", dd);
+	}
+  if (event.getKeySym () == "r" && event.keyDown ()) {
+		dd /= 2.0;
+		printf("halved dd to %lf\n", dd);
+	}
+  if (event.getKeySym () == "n" && event.keyDown ()) {
+		printf("Current is 2.\n");
+		Tc = &T2;
+	}
+  if (event.getKeySym () == "m" && event.keyDown ()) {
+		printf("Current is 3.\n");
+		Tc = &T3;
+	}
+  if (event.getKeySym () == "k" && event.keyDown ()) {
+		printf("Current is 4.\n");
+		Tc = &T4;
+	}
+  if (event.getKeySym () == "i" && event.keyDown ()) {
+		printf("All is visualized.\n");
+		viewAll = !viewAll;
+	}
+  if (event.getKeySym () == "a" && event.keyDown ()) (*Tc)(0,3) += dd;
+  if (event.getKeySym () == "d" && event.keyDown ()) (*Tc)(0,3) -= dd;
+  if (event.getKeySym () == "w" && event.keyDown ()) (*Tc)(1,3) += dd;
+  if (event.getKeySym () == "s" && event.keyDown ()) (*Tc)(1,3) -= dd;
+  if (event.getKeySym () == "j" && event.keyDown ()) (*Tc)(2,3) += dd;
+  if (event.getKeySym () == "l" && event.keyDown ()) (*Tc)(2,3) -= dd;
 }
 
-KinectMotor::~KinectMotor()
-{
-        Close();
+/* ******************************************************************************************** */
+boost::shared_ptr<pcl::visualization::PCLVisualizer> rgbVis (Cloud::ConstPtr cloud) {
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+  viewer->setBackgroundColor (0, 0, 0);
+  viewer->registerKeyboardCallback (keyboardEventOccurred, (void*)&viewer);
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBA> rgb(cloud);
+  viewer->addPointCloud<pcl::PointXYZRGBA> (cloud, rgb, "sample cloud");
+  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
+  viewer->addCoordinateSystem (1.0);
+  viewer->initCameraParameters ();
+  return (viewer);
 }
 
-bool KinectMotor::Open()
-{
-        const XnUSBConnectionString *paths;
-        XnUInt32 count;
-        XnStatus res;
+/* ******************************************************************************************** */
+int main (int argc, char** argv) {
 
-        // Init OpenNI USB
-        res = xnUSBInit();
-        if (res != XN_STATUS_OK) {
-                xnPrintError(res, "xnUSBInit failed");
-                return false;
-        }
+	// Compute the transformation
+	T1.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix();
+	T2.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix() * 
+		Eigen::AngleAxis<double>(M_PI_2, Eigen::Vector3d(0,1,0)).matrix();
+	T2.block<3,1>(0,3) = Eigen::Vector3d(0.0, 0.0, 0.0);
+	T3.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix() * 
+		Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,1,0)).matrix();
+	T3.block<3,1>(0,3) = Eigen::Vector3d(0.0, 0.0, 0.0);
+	T4.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix() * 
+		Eigen::AngleAxis<double>(3*M_PI_2, Eigen::Vector3d(0,1,0)).matrix();
+	T4.block<3,1>(0,3) = Eigen::Vector3d(0.0, 0.0, 0.0);
 
-        // Open "Kinect motor" USB device
-        res = xnUSBEnumerateDevices(0x045E /* VendorID */, 0x02B0 /*ProductID
-*/, &paths, &count);
-        if (res != XN_STATUS_OK) {
-                xnPrintError(res, "xnUSBEnumerateDevices failed");
-                return false;
-        }
+  Cloud::Ptr c1 (new Cloud);
+  Cloud::Ptr c2 (new Cloud);
+  Cloud::Ptr c3 (new Cloud);
+  Cloud::Ptr c4 (new Cloud);
+	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin1", *c1) != -1);
+	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin3", *c2) != -1);
+	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin2", *c3) != -1);
+	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin4", *c4) != -1);
 
-        // Open first found device
-        res = xnUSBOpenDeviceByPath(paths[0], &m_dev);
-        if (res != XN_STATUS_OK) {
-                xnPrintError(res, "xnUSBOpenDeviceByPath failed");
-                return false;
-        }
+	double distLimit = 6.5;
 
-        XnUChar buf[1]; // output buffer
+	
 
-        // Init motor
-        res = xnUSBSendControl(m_dev, (XnUSBControlType) 0xc0, 0x10, 0x00,
-0x00, buf, sizeof(buf), 0);
-        if (res != XN_STATUS_OK) {
-                xnPrintError(res, "xnUSBSendControl failed");
-                Close();
-                return false;
-        }
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = rgbVis(Cloud::Ptr(new Cloud));
 
-        res = xnUSBSendControl(m_dev,
-XN_USB_CONTROL_TYPE_VENDOR, 0x06, 0x01, 0x00, NULL,
-0, 0);
-        if (res != XN_STATUS_OK) {
-                xnPrintError(res, "xnUSBSendControl failed");
-                Close();
-                return false;
-        }
-        return true;
-}
+  while (!viewer->wasStopped ()) {
 
-void KinectMotor::Close()
-{
-        if (m_isOpen) {
-                xnUSBCloseDevice(m_dev);
-                m_isOpen = false;
-        }
-}
+		Cloud::Ptr point_cloud_ptr (new Cloud);
 
-bool KinectMotor::Move(int angle)
-{
-        XnStatus res;
+		// First cloud
+		for (int h=0; h < c1->height; h++) {
+			for (int w=0; w < c1->width; w++) {
+				pcl::PointXYZRGBA point = c1->at(w, h);
+				if(point.x != point.x) continue;
+				if(point.z > distLimit) continue;
+				Eigen::Vector4d p (point.x, point.y, point.z, 1);
+				Eigen::Vector4d Tp = T1 * p;
+				point.x = Tp(0); point.y = Tp(1); point.z = Tp(2);
+				point_cloud_ptr->push_back(point);
+			}
+		}
 
-        // Send move control request
-        res = xnUSBSendControl(m_dev, XN_USB_CONTROL_TYPE_VENDOR, 0x31,
-angle, 0x00, NULL, 0, 0);
-        if (res != XN_STATUS_OK) {
-                xnPrintError(res, "xnUSBSendControl failed");
-                return false;
-        }
-        return true;
-}
+		// Second cloud
+		if(viewAll || (Tc == &T2)) {
+			cout << "T2: \n" << T2 << endl;
+			for (int h=0; h < c2->height; h++) {
+				for (int w=0; w < c2->width; w++) {
+					pcl::PointXYZRGBA point = c2->at(w, h);
+					if(point.x != point.x) continue;
+					if(point.z > distLimit) continue;
+					Eigen::Vector4d p (point.x, point.y, point.z, 1);
+					Eigen::Vector4d Tp = T2 * p;
+					point.x = Tp(0); point.y = Tp(1); point.z = Tp(2);
+					point_cloud_ptr->push_back(point);
+				}
+			}
+		}
 
-int main(int argc, char *argv[])
-{
-        KinectMotor motor;
+		// Third cloud
+		if(viewAll || (Tc == &T3)) {
+			cout << "T3: \n" << T3 << endl;
+			for (int h=0; h < c3->height; h++) {
+				for (int w=0; w < c3->width; w++) {
+					pcl::PointXYZRGBA point = c3->at(w, h);
+					if(point.x != point.x) continue;
+					if(point.z > distLimit) continue;
+					Eigen::Vector4d p (point.x, point.y, point.z, 1);
+					Eigen::Vector4d Tp = T3 * p;
+					point.x = Tp(0); point.y = Tp(1); point.z = Tp(2);
+					point_cloud_ptr->push_back(point);
+				}
+			}
+		}
 
-        if (!motor.Open()) // Open motor device
-                return 1;
+		// Fourth cloud
+		if(viewAll || (Tc == &T4)) {
+			cout << "T4: \n" << T4 << endl;
+			for (int h=0; h < c4->height; h++) {
+				for (int w=0; w < c4->width; w++) {
+					pcl::PointXYZRGBA point = c4->at(w, h);
+					if(point.x != point.x) continue;
+					if(point.z > distLimit) continue;
+					Eigen::Vector4d p (point.x, point.y, point.z, 1);
+					Eigen::Vector4d Tp = T4 * p;
+					point.x = Tp(0); point.y = Tp(1); point.z = Tp(2);
+					point_cloud_ptr->push_back(point);
+				}
+			}
+		}
 
-        motor.Move(31); // move it up to 31 degree
-        usleep(1e7);
-
-        motor.Move(-31); // move it down to 31 degree
-        usleep(1e7);
-
-        motor.Move(0);
-        return 0;
+		viewer->removePointCloud("sample cloud");
+		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBA> rgb(point_cloud_ptr);
+		viewer->addPointCloud<pcl::PointXYZRGBA> (point_cloud_ptr, rgb, "sample cloud");
+    viewer->spinOnce (100);
+    boost::this_thread::sleep (boost::posix_time::microseconds (10000));
+  }
 }
