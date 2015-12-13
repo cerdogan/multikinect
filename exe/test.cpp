@@ -24,12 +24,12 @@ void keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event,
                             void* viewer_void) {
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = 
 		*static_cast<boost::shared_ptr<pcl::visualization::PCLVisualizer> *> (viewer_void);
-	static double dd = 0.005;
-  if (event.getKeySym () == "q" && event.keyDown ()) {
+	static double dd = 0.05/2.0;
+  if (event.getKeySym () == "r" && event.keyDown ()) {
 		dd *= 2;
 		printf("doubled dd to %lf\n", dd);
 	}
-  if (event.getKeySym () == "r" && event.keyDown ()) {
+  if (event.getKeySym () == "t" && event.keyDown ()) {
 		dd /= 2.0;
 		printf("halved dd to %lf\n", dd);
 	}
@@ -77,10 +77,10 @@ int main (int argc, char** argv) {
 	T1.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix();
 	T2.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix() * 
 		Eigen::AngleAxis<double>(M_PI_2, Eigen::Vector3d(0,1,0)).matrix();
-	T2.block<3,1>(0,3) = Eigen::Vector3d(0.0, 0.0, 0.0);
+	T2.block<3,1>(0,3) = Eigen::Vector3d(1.825, 0.15, 1.975);
 	T3.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix() * 
 		Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,1,0)).matrix();
-	T3.block<3,1>(0,3) = Eigen::Vector3d(0.0, 0.0, 0.0);
+	T3.block<3,1>(0,3) = Eigen::Vector3d(0.15, 0.15, 4.3);
 	T4.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix() * 
 		Eigen::AngleAxis<double>(3*M_PI_2, Eigen::Vector3d(0,1,0)).matrix();
 	T4.block<3,1>(0,3) = Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -89,12 +89,12 @@ int main (int argc, char** argv) {
   Cloud::Ptr c2 (new Cloud);
   Cloud::Ptr c3 (new Cloud);
   Cloud::Ptr c4 (new Cloud);
-	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin1", *c1) != -1);
-	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin3", *c2) != -1);
+	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin3", *c1) != -1);
+	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin4", *c2) != -1);
 	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin2", *c3) != -1);
-	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin4", *c4) != -1);
+//	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin4", *c4) != -1);
 
-	double distLimit = 6.5;
+	double distLimit = atof(argv[1]); //6.5;
 
 	
 
@@ -150,20 +150,20 @@ int main (int argc, char** argv) {
 		}
 
 		// Fourth cloud
-		if(viewAll || (Tc == &T4)) {
-			cout << "T4: \n" << T4 << endl;
-			for (int h=0; h < c4->height; h++) {
-				for (int w=0; w < c4->width; w++) {
-					pcl::PointXYZRGBA point = c4->at(w, h);
-					if(point.x != point.x) continue;
-					if(point.z > distLimit) continue;
-					Eigen::Vector4d p (point.x, point.y, point.z, 1);
-					Eigen::Vector4d Tp = T4 * p;
-					point.x = Tp(0); point.y = Tp(1); point.z = Tp(2);
-					point_cloud_ptr->push_back(point);
-				}
-			}
-		}
+//		if(viewAll || (Tc == &T4)) {
+//			cout << "T4: \n" << T4 << endl;
+//			for (int h=0; h < c4->height; h++) {
+//				for (int w=0; w < c4->width; w++) {
+//					pcl::PointXYZRGBA point = c4->at(w, h);
+//					if(point.x != point.x) continue;
+//					if(point.z > distLimit) continue;
+//					Eigen::Vector4d p (point.x, point.y, point.z, 1);
+//					Eigen::Vector4d Tp = T4 * p;
+//					point.x = Tp(0); point.y = Tp(1); point.z = Tp(2);
+//					point_cloud_ptr->push_back(point);
+//				}
+//			}
+//		}
 
 		viewer->removePointCloud("sample cloud");
 		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBA> rgb(point_cloud_ptr);
