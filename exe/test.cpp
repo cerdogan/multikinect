@@ -76,11 +76,13 @@ int main (int argc, char** argv) {
 	// Compute the transformation
 	T1.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix();
 	T2.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix() * 
-		Eigen::AngleAxis<double>(M_PI_2, Eigen::Vector3d(0,1,0)).matrix();
-	T2.block<3,1>(0,3) = Eigen::Vector3d(1.825, 0.15, 1.975);
+		Eigen::AngleAxis<double>(-M_PI_2, Eigen::Vector3d(0,1,0)).matrix();
+	// T2.block<3,1>(0,3) = Eigen::Vector3d(1.825, 0.15, 1.975);
+	T2.block<3,1>(0,3) = Eigen::Vector3d(-2.525, -0.35, 2.0375);
 	T3.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix() * 
 		Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,1,0)).matrix();
-	T3.block<3,1>(0,3) = Eigen::Vector3d(0.15, 0.15, 4.3);
+	// T3.block<3,1>(0,3) = Eigen::Vector3d(0.15, 0.15, 4.3);
+	T3.block<3,1>(0,3) = Eigen::Vector3d(0.175, 0.175, 4.2);
 	T4.block<3,3>(0,0) = Eigen::AngleAxis<double>(M_PI, Eigen::Vector3d(0,0,1)).matrix() * 
 		Eigen::AngleAxis<double>(3*M_PI_2, Eigen::Vector3d(0,1,0)).matrix();
 	T4.block<3,1>(0,3) = Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -90,7 +92,7 @@ int main (int argc, char** argv) {
   Cloud::Ptr c3 (new Cloud);
   Cloud::Ptr c4 (new Cloud);
 	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin3", *c1) != -1);
-	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin4", *c2) != -1);
+	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin1", *c2) != -1);
 	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin2", *c3) != -1);
 //	assert(pcl::io::loadPCDFile<pcl::PointXYZRGBA> ("kin4", *c4) != -1);
 
