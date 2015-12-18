@@ -64,8 +64,7 @@ boost::shared_ptr<pcl::visualization::PCLVisualizer> rgbVis (Cloud::ConstPtr clo
   viewer->registerKeyboardCallback (keyboardEventOccurred, (void*)&viewer);
   pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBA> rgb(cloud);
   viewer->addPointCloud<pcl::PointXYZRGBA> (cloud, rgb, "sample cloud");
-  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
-  viewer->addCoordinateSystem (1.0);
+  //viewer->addCoordinateSystem (1.0);
   viewer->initCameraParameters ();
   return (viewer);
 }
@@ -106,7 +105,8 @@ int main (int argc, char** argv) {
 			for (int w=0; w < c1->width; w++) {
 				pcl::PointXYZRGBA point = c1->at(w, h);
 				if(point.x != point.x) continue;
-				if(point.z > distLimit) continue;
+				if(point.z > atof(argv[2])) continue;
+				if(fabs(point.x) > atof(argv[3])) continue;
 				Eigen::Vector4d p (point.x, point.y, point.z, 1);
 				Eigen::Vector4d Tp = T1 * p;
 				point.x = Tp(0); point.y = Tp(1); point.z = Tp(2);
@@ -117,6 +117,7 @@ int main (int argc, char** argv) {
 		viewer->removePointCloud("sample cloud");
 		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBA> rgb(point_cloud_ptr);
 		viewer->addPointCloud<pcl::PointXYZRGBA> (point_cloud_ptr, rgb, "sample cloud");
+		viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4, "sample cloud");
     viewer->spinOnce (100);
     boost::this_thread::sleep (boost::posix_time::microseconds (10000));
   }
