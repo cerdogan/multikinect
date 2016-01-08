@@ -19,7 +19,7 @@ boost::shared_ptr<pcl::visualization::PCLVisualizer> rgbVis
  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBA> rgb(cloud);
  viewer->addPointCloud<pcl::PointXYZRGBA> (cloud, rgb, "sample cloud");
  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
-// viewer->addCoordinateSystem (1.0);
+ viewer->addCoordinateSystem (1.0);
  viewer->initCameraParameters ();
  return (viewer);
 }

@@ -13,7 +13,7 @@ link_libraries(${OpenCV_LIBS})
 # Include the PCL library
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS} -std=c++0x -g)
+add_definitions(${PCL_DEFINITIONS} -std=c++0x -O3)
 
 # Collect the source, script and test files
 file(GLOB scripts_source "exe/*.cpp")
